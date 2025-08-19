@@ -1,26 +1,66 @@
 // Relevant docs: https://git.sr.ht/~foosoft/anki-connect
 
-use strum::{EnumString, Display};
+use strum::{EnumString, AsRefStr};
 
 /// The full URL that Anki-Connect runs on by default
 pub const DEFAULT_URL: &str = "http://127.0.0.1:8765";
 
-#[derive(EnumString, Display)]
+const API_VERSION: u32 = 6;
+
+#[derive(serde::Serialize)]
+pub struct RequestBody<'a, ParamsType: serde::Serialize> {
+    action: &'a str,
+    version: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    params: Option<&'a ParamsType>,
+}
+
+impl<'a, ParamsType: serde::Serialize> RequestBody<'a, ParamsType> {
+
+    pub fn with_params(action: &'a str, params: &'a ParamsType) -> Self {
+        Self {
+            action,
+            params: Some(params),
+            version: API_VERSION,
+        }
+    }
+
+    pub fn with_optional_params(action: &'a str, params: Option<&'a ParamsType>) -> Self {
+        Self {
+            action,
+            params,
+            version: API_VERSION,
+        }
+    }
+
+}
+
+impl<'a> RequestBody<'a, ()> {
+    pub fn without_params(action: &'a str) -> RequestBody<'a, ()> {
+        RequestBody::<'a, ()> {
+            action,
+            params: None,
+            version: API_VERSION,
+        }
+    }
+}
+
+#[derive(EnumString, AsRefStr)]
 #[strum(serialize_all = "camelCase")]
 pub enum Order {
     Ascending,
     Descending,
 }
 
-impl From<Order> for serde_json::Value {
-    fn from(value: Order) -> Self {
-        serde_json::Value::String(value.to_string())
+impl serde::Serialize for Order {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        serializer.serialize_str(self.as_ref())
     }
 }
 
 /// I mimic Anki's original enum members and serialization rules as closely as possible.
 /// See: https://github.com/ankitects/anki/blob/main/rslib/src/browser_table.rs
-#[derive(EnumString, Display)]
+#[derive(EnumString, AsRefStr)]
 #[strum(serialize_all = "camelCase")]
 pub enum BrowserColumn {
     Answer,
@@ -54,15 +94,82 @@ pub enum BrowserColumn {
     Retrievability,
 }
 
-impl From<BrowserColumn> for serde_json::Value {
-    fn from(value: BrowserColumn) -> Self {
-        serde_json::Value::String(value.to_string())
+impl serde::Serialize for BrowserColumn {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
+        serializer.serialize_str(self.as_ref())
+    }
+}
+
+#[derive(serde::Serialize)]
+pub struct GuiBrowseCardOrderOptions {
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<Order>,
+
+    #[serde(
+        rename = "columnId",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub column: Option<BrowserColumn>,
+}
+
+impl GuiBrowseCardOrderOptions {
+    pub fn new() -> Self {
+        Self {
+            order: None,
+            column: None,
+        }
+    }
+}
+
+impl Default for GuiBrowseCardOrderOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(serde::Serialize)]
+pub struct GuiBrowseOptions {
+
+    #[serde(
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub query: Option<String>,
+
+    #[serde(
+        rename = "reorderCards",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub reorder_cards: Option<GuiBrowseCardOrderOptions>,
+}
+
+impl GuiBrowseOptions {
+
+    pub fn new() -> Self {
+        Self {
+            query: None,
+            reorder_cards: None,
+        }
+    }
+
+    /// Create an options object with just a query and without any sort preferences
+    pub fn query(query: impl Into<String>) -> Self {
+        Self {
+            query: Some(query.into()),
+            reorder_cards: None,
+        }
+    }
+}
+
+impl Default for GuiBrowseOptions {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 /// Represents data returned by the `getReviewsOfCards` action.
 /// A few fields are renamed to better adhere to Rust conventions and avoid keywords.
-#[derive(Debug, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct ReviewOfCard {
     /// The review's ID is also the time it occurred in milliseconds from UNIX epoch
     pub id: u64,
@@ -187,23 +294,16 @@ impl AnkiConnect {
         AnkiConnect { url, client }
     }
 
-    pub async fn invoke(
+    pub async fn invoke<'a, ParamsType: serde::Serialize>(
         &self,
-        action: &str,
-        params: &serde_json::Value,
+        request_body: RequestBody<'a, ParamsType>,
     ) -> Result<serde_json::Value, Error> {
-
-        let body = serde_json::json!({
-            "action": &action,
-            "version": 6,
-            "params": &params,
-        });
 
         let res = self
             .client
             .post(&self.url)
             .header("Content-Type", "application/json")
-            .json(&body)
+            .json(&request_body)
             .send()
             .await
             .map_err(Error::Request)?;
@@ -246,29 +346,19 @@ impl AnkiConnect {
         Ok(res_result)
     }
 
-    pub async fn invoke_without_params(&self, action: &str) -> Result<serde_json::Value, Error> {
-        let params = serde_json::json! {{}};
-        return self.invoke(action, &params).await;
-    }
-
-    pub async fn invoke_de<T: serde::de::DeserializeOwned>(
+    pub async fn invoke_de<
+        'a,
+        ParamsType: serde::Serialize,
+        ResultType: serde::de::DeserializeOwned,
+    >(
         &self,
-        action: &str,
-        params: &serde_json::Value,
-    ) -> Result<T, Error> {
-        self.invoke(action, params)
+        request_body: RequestBody<'a, ParamsType>,
+    ) -> Result<ResultType, Error> {
+        self.invoke(request_body)
             .await
-            .map(serde_json::from_value::<T>)?
+            .map(serde_json::from_value::<ResultType>)?
             .map_err(DeserializeError::Serde)
             .map_err(Error::Deserialize)
-    }
-
-    pub async fn invoke_de_without_params<T: serde::de::DeserializeOwned>(
-        &self,
-        action: &str,
-    ) -> Result<T, Error> {
-        let params = serde_json::json! {{}};
-        return self.invoke_de(action, &params).await;
     }
 
     // Card actions
@@ -290,7 +380,7 @@ impl AnkiConnect {
         let params = serde_json::json! {{
             "query": query,
         }};
-        self.invoke_de("findCards", &params).await
+        self.invoke_de(RequestBody::with_params("findCards", &params)).await
     }
 
     /// Invokes the `cardsToNotes` action.
@@ -300,7 +390,7 @@ impl AnkiConnect {
         let params = serde_json::json! {{
             "cards": cards,
         }};
-        self.invoke_de("cardsToNotes", &params).await
+        self.invoke_de(RequestBody::with_params("cardsToNotes", &params)).await
     }
 
     // TODO cardsModTime
@@ -320,31 +410,19 @@ impl AnkiConnect {
     /// See: <https://docs.ankiweb.net/searching.html>
     pub async fn do_gui_browse(
         &self,
-        query: &str,
-        order: Option<Order>,
-        order_column: Option<BrowserColumn>,
+        options: Option<&GuiBrowseOptions>,
     ) -> Result<Vec<u64>, Error> {
-
-        let mut params = serde_json::Map::new();
-        params.insert("query".to_string(), query.into());
-
-        if order.is_some() || order_column.is_some() {
-            let mut reorder_cards = serde_json::Map::new();
-            if let Some(x) = order {
-                reorder_cards.insert("order".to_string(), x.into());
-            }
-            if let Some(x) = order_column {
-                reorder_cards.insert("columnId".to_string(), x.into());
-            }
-            params.insert("reorderCards".to_string(), serde_json::Value::Object(reorder_cards));
-        }
-
-        let params = serde_json::Value::Object(params);
-        eprintln!("{params}");
-        self.invoke_de("guiBrowse", &params).await
+        self.invoke_de(RequestBody::with_optional_params("guiBrowse", options)).await
     }
 
-    // TODO guiSelectCard
+    /// Invokes the `guiSelectCard` action.
+    /// Expects the Card Browser dialog to already be open.
+    /// Returns `true` if the Card Browser dialog is open.
+    pub async fn do_gui_select_card(&self, card: &u64) -> Result<bool, Error> {
+        let params = serde_json::json!({ "card": card, });
+        self.invoke_de(RequestBody::with_params("guiDeckReview", &params)).await
+    }
+
     // TODO guiSelectedNotes
     // TODO guiAddCards
     // TODO guiEditNote
@@ -353,13 +431,61 @@ impl AnkiConnect {
     // TODO guiShowQuestion
     // TODO guiShowAnswer
     // TODO guiAnswerCard
-    // TODO guiUndo
-    // TODO guiDeckOverview
-    // TODO guiDeckBrowser
-    // TODO guiDeckReview
-    // TODO guiImportFile
+
+    /// Invokes the `guiUndo` action.
+    /// Returns `true` on success.
+    pub async fn do_gui_undo(&self) -> Result<bool, Error> {
+        self.invoke_de(RequestBody::without_params("guiUndo")).await
+    }
+
+    /// Invokes the `guiDeckOverview` action
+    /// Opens the Deck Overview dialog for the given deck.
+    pub async fn do_gui_deck_overview(&self, name: &str) -> Result<bool, Error> {
+        let params = serde_json::json!({ "name": name, });
+        self.invoke_de(RequestBody::with_params("guiDeckReview", &params)).await
+    }
+
+    /// Invokes the `guiDeckBrowser` action.
+    /// Opens the Deck Browser dialog.
+    pub async fn do_gui_deck_browser(&self) -> Result<(), Error> {
+        self.invoke_de(RequestBody::without_params("guiDeckBrowser")).await
+    }
+
+    /// Invokes the `guiDeckReview` action.
+    /// Starts reviewing the deck. Returns `true` on success.
+    pub async fn do_gui_deck_review(&self, name: &str) -> Result<bool, Error> {
+        let params = serde_json::json!({ "name": name, });
+        self.invoke_de(RequestBody::with_params("guiDeckReview", &params)).await
+    }
+
+
+    /// Invokes the `guiImportFile` action.
+    /// Opens the Import... dialog.
+    pub async fn do_gui_import_file(&self, path: Option<&str>) -> Result<(), Error> {
+        match path {
+            Some(x) => {
+                let params = serde_json::json!({ "path": x, });
+                self.invoke_de(RequestBody::with_params("guiImportFile", &params)).await
+            },
+            _ => {
+                self.invoke_de(RequestBody::without_params("guiImportFile")).await
+            },
+        }
+    }
+
+    /// Invokes the `guiExitAnki` action.
+    /// According to API docs, the API request will return immediately and does not wait for Anki
     // TODO guiExitAnki
-    // TODO guiCheckDatabase
+    /// to actually close.
+    pub async fn do_gui_exit_anki(&self) -> Result<(), Error> {
+        self.invoke_de(RequestBody::without_params("guiExitAnki")).await
+    }
+
+    /// Invokes the `guiCheckDatabase` action.
+    /// According to API docs, it should always return `true`.
+    pub async fn do_gui_check_database(&self) -> Result<bool, Error> {
+        self.invoke_de(RequestBody::without_params("guiCheckDatabase")).await
+    }
 
     // Media actions
     // TODO
@@ -371,7 +497,7 @@ impl AnkiConnect {
     /// Invokes the `version` action.
     /// Returns a number indicating the version of the API server.
     pub async fn get_version(&self) -> Result<u64, Error> {
-        self.invoke_de_without_params("version").await
+        self.invoke_de(RequestBody::without_params("version")).await
     }
 
     // TODO apiReflect
@@ -379,19 +505,19 @@ impl AnkiConnect {
     /// Invokes the `sync` action.
     /// Prompts the client to sync with AnkiWeb.
     pub async fn sync(&self) -> Result<(), Error> {
-        self.invoke_de_without_params("sync").await
+        self.invoke_de(RequestBody::without_params("sync")).await
     }
 
     /// Invokes the `getProfiles` action.
     /// Returns a Vec of strings indicating the names of profiles in the client.
     pub async fn get_profiles(&self) -> Result<Vec<String>, Error> {
-        self.invoke_de_without_params("getProfiles").await
+        self.invoke_de(RequestBody::without_params("getProfiles")).await
     }
 
     /// Invokes the `getActiveProfile` action.
     /// Returns a string indicating the name of the active profile.
     pub async fn get_active_profile(&self) -> Result<String, Error> {
-        self.invoke_de_without_params("getActiveProfile").await
+        self.invoke_de(RequestBody::without_params("getActiveProfile")).await
     }
 
     // TODO loadProfile
@@ -414,7 +540,6 @@ impl AnkiConnect {
     // TODO updateNoteModel
     // TODO updateNoteTags
     // TODO getNoteTags
-    // TODO addTags
 
     /// Invokes the `addTags` action.
     /// `notes` should be a Vec of note IDs.
@@ -424,7 +549,7 @@ impl AnkiConnect {
             "notes": notes,
             "tags": tags,
         }};
-        self.invoke_de("addTags", &params).await
+        self.invoke_de(RequestBody::with_params("addTags", &params)).await
     }
 
     /// Invokes the `removeTags` action.
@@ -435,7 +560,7 @@ impl AnkiConnect {
             "notes": notes,
             "tags": tags,
         }};
-        self.invoke_de("removeTags", &params).await
+        self.invoke_de(RequestBody::with_params("removeTags", &params)).await
     }
 
     // TODO getTags
@@ -450,7 +575,7 @@ impl AnkiConnect {
         let params = serde_json::json! {{
             "query": query,
         }};
-        self.invoke_de("findNotes", &params).await
+        self.invoke_de(RequestBody::with_params("findNotes", &params)).await
     }
 
     // TODO notesInfo
@@ -462,7 +587,7 @@ impl AnkiConnect {
 
     /// Invokes the `getNumCardsReviewedToday` action.
     pub async fn get_num_cards_reviewed_today(&self) -> Result<u64, Error> {
-        self.invoke_de_without_params("getNumCardsReviewedToday").await
+        self.invoke_de(RequestBody::without_params("getNumCardsReviewedToday")).await
     }
 
     // TODO getNumCardsReviewedByDay
@@ -478,7 +603,7 @@ impl AnkiConnect {
         let params = serde_json::json! {{
             "cards": cards,
         }};
-        self.invoke_de("getReviewsOfCards", &params).await
+        self.invoke_de(RequestBody::with_params("getReviewsOfCards", &params)).await
     }
 
     // TODO getLatestReviewID
