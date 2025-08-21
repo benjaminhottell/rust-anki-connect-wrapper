@@ -1,5 +1,4 @@
-use crate::order::Order;
-use crate::browser_column::BrowserColumn;
+use crate::models::{Order, BrowserColumn};
 
 #[derive(serde::Serialize)]
 pub struct GuiBrowseCardOrderOptions {

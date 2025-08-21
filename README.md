@@ -7,7 +7,7 @@ A thin wrapper around the [Anki-Connect REST API](https://git.sr.ht/~foosoft/ank
 Create a client wrapper
 
 ```rust
-let anki = ankiconnect::AnkiConnect::builder()
+let anki = ankiconnect::Client::builder()
     .with_url(args.url)
     .build();
 ```
@@ -17,15 +17,15 @@ Make an API request
 ```rust
 let query = "prop:ivl>=21";
 
-let notes = match anki.find_notes(query).await {
+let cards = match anki.find_cards(query).await {
     Ok(x) => x,
     Err(e) => {
-        eprintln!("Failed to search for notes: {e}");
+        eprintln!("Failed to search for cards: {e}");
         std::process::exit(1);
     },
 };
 
-eprintln!("Found {} notes", notes.len());
+eprintln!("Found {} cards", cards.len());
 ```
 
 ## Help wanted
