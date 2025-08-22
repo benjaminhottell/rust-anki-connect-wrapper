@@ -1,8 +1,6 @@
+use crate::endpoints::request::Request;
 use crate::models::{RequestBody, ResponseBody};
 use crate::error::Error;
-
-/// The full URL that Anki-Connect runs on by default
-pub const DEFAULT_URL: &str = "http://127.0.0.1:8765";
 
 async fn invoke<
     BodyType: serde::Serialize,
@@ -51,7 +49,7 @@ impl ClientBuilder {
 
     pub fn build(self) -> Client {
         Client {
-            url: self.url.unwrap_or_else(|| DEFAULT_URL.to_string()),
+            url: self.url.unwrap_or_else(|| Client::DEFAULT_URL.to_string()),
             client: self.client.unwrap_or_default(),
         }
     }
@@ -71,22 +69,42 @@ pub struct Client {
 
 impl Client {
 
+    pub const DEFAULT_URL: &'static str = "http://127.0.0.1:8765";
+
     pub fn builder() -> ClientBuilder {
         ClientBuilder::new()
     }
 
-    pub async fn invoke<
+    pub async fn invoke_custom<
         'a,
         ParamsType: serde::Serialize,
         ResultType: serde::de::DeserializeOwned,
     >(
         &self,
-        request_body: RequestBody<'a, ParamsType>,
+        body: &RequestBody<'a, ParamsType>,
     ) -> Result<ResultType, Error> {
-        invoke(&self.client, &self.url, &request_body)
+        invoke(&self.client, &self.url, &body)
             .await
             .map(serde_json::from_value::<ResultType>)?
             .map_err(Error::DeserializeSerde)
+    }
+
+    pub async fn invoke<R: Request>(&self, request: &R) -> Result<R::Response, Error> {
+
+        let action = request.get_action();
+        let version = request.get_version();
+        let params = request.get_params();
+
+        match params {
+            Some(x) => {
+                let body = RequestBody::with_params(action, version, &x);
+                self.invoke_custom(&body).await
+            },
+            _ => {
+                let body = RequestBody::without_params(action, version);
+                self.invoke_custom(&body).await
+            },
+        }
     }
 
 }

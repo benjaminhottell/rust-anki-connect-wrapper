@@ -1,6 +1,6 @@
 use strum::{EnumString, AsRefStr};
 
-#[derive(EnumString, AsRefStr)]
+#[derive(Copy, Clone, EnumString, AsRefStr)]
 #[strum(serialize_all = "camelCase")]
 pub enum Order {
     Ascending,

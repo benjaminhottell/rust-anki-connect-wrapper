@@ -1,8 +1,2 @@
-use crate::client::Client;
-
-impl Client {
-
-    // Media actions
-    // TODO
-
-}
+// Media actions
+// TODO

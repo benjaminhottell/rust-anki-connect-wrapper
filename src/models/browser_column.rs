@@ -2,7 +2,7 @@ use strum::{EnumString, AsRefStr};
 
 /// I mimic Anki's original enum members and serialization rules as closely as possible.
 /// See: https://github.com/ankitects/anki/blob/main/rslib/src/browser_table.rs
-#[derive(EnumString, AsRefStr)]
+#[derive(Copy, Clone, EnumString, AsRefStr)]
 #[strum(serialize_all = "camelCase")]
 pub enum BrowserColumn {
     Answer,

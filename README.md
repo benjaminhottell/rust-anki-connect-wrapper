@@ -15,17 +15,16 @@ let anki = ankiconnect::Client::builder()
 Make an API request
 
 ```rust
-let query = "prop:ivl>=21";
+let browse_query = "prop:ivl>=21";
 
-let cards = match anki.find_cards(query).await {
-    Ok(x) => x,
-    Err(e) => {
-        eprintln!("Failed to search for cards: {e}");
-        std::process::exit(1);
-    },
+let browse_request = GuiBrowse::builder()
+    .query(browse_query)
+    .build();
+
+if let Err(e) = anki.invoke(&browse_request).await {
+    eprintln!("Failed to display browser: {e}");
+    std::process::exit(1);
 };
-
-eprintln!("Found {} cards", cards.len());
 ```
 
 ## Help wanted
