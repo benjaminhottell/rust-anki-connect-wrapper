@@ -24,20 +24,20 @@ async fn invoke<
         .map_err(Error::Normal)
 }
 
-pub struct ClientBuilder {
-    url: Option<String>,
+pub struct ClientBuilder<'a> {
+    url: Option<&'a str>,
     client: Option<reqwest::Client>,
 }
 
-impl ClientBuilder {
-    pub fn new() -> ClientBuilder{
+impl<'a> ClientBuilder<'a> {
+    pub fn new() -> ClientBuilder<'a> {
         ClientBuilder {
             url: None,
             client: None,
         }
     }
 
-    pub fn with_url(mut self, url: String) -> Self {
+    pub fn with_url(mut self, url: &'a str) -> Self {
         self.url = Some(url);
         self
     }
@@ -47,43 +47,64 @@ impl ClientBuilder {
         self
     }
 
-    pub fn build(self) -> Client {
+    pub fn build(self) -> Client<'a> {
         Client {
-            url: self.url.unwrap_or_else(|| Client::DEFAULT_URL.to_string()),
+            url: self.url.unwrap_or_else(|| Client::DEFAULT_URL),
             client: self.client.unwrap_or_default(),
         }
     }
 
 }
 
-impl Default for ClientBuilder {
+impl<'a> Default for ClientBuilder<'a> {
     fn default() -> Self {
         ClientBuilder::new()
     }
 }
 
-pub struct Client {
-    url: String,
+/// A `Client` can invoke `Request`s.
+/// `Request`s should be constructed separately.
+///
+/// Connecting to Anki-Connect at the default port on localhost:
+///
+/// ```
+/// use ankiconnect::Client;
+/// Client::default();
+/// ```
+///
+/// Connecting to Anki-Connect at a custom url:
+///
+/// ```
+/// use ankiconnect::Client;
+/// let url ="http://www.example.com:8765";
+/// Client::builder()
+///     .with_url(url)
+///     .build();
+/// ```
+///
+/// Make sure the URL contains a scheme (e.g. `http://`)
+pub struct Client<'a> {
+    url: &'a str,
     client: reqwest::Client,
 }
 
-impl Client {
+impl<'a> Client<'a> {
 
     pub const DEFAULT_URL: &'static str = "http://127.0.0.1:8765";
 
-    pub fn builder() -> ClientBuilder {
+    pub fn builder() -> ClientBuilder<'a> {
         ClientBuilder::new()
     }
 
     pub async fn invoke_custom<
-        'a,
+        'b,
         ParamsType: serde::Serialize,
         ResultType: serde::de::DeserializeOwned,
     >(
         &self,
-        body: &RequestBody<'a, ParamsType>,
+        body: &RequestBody<'b, ParamsType>,
     ) -> Result<ResultType, Error> {
-        invoke(&self.client, &self.url, &body)
+        invoke(&self.client, self.url, &body)
             .await
             .map(serde_json::from_value::<ResultType>)?
             .map_err(Error::DeserializeSerde)
@@ -107,4 +128,18 @@ impl Client {
         }
     }
 
+    /// Invoke the API with a `Request` constructed via `default()`.
+    /// Only works on `Request`s that also implement `Default`, meaning they either have no
+    /// parameters or have parameters with sensible defaults.
+    pub async fn invoke_default<R: Request + Default>(&self) -> Result<R::Response, Error> {
+        let request = R::default();
+        self.invoke(&request).await
+    }
+
+}
+
+impl<'a> Default for Client<'a> {
+    fn default() -> Self {
+        Client::builder().build()
+    }
 }

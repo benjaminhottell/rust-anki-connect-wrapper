@@ -2,7 +2,33 @@ use crate::endpoints::request::Request;
 
 // Card actions
 
-// TODO getEaseFactors
+/// Correponds to the `getEaseFactors` action.
+#[derive(serde::Serialize)]
+pub struct GetEaseFactors<'a> {
+    cards: &'a [u64],
+}
+
+impl<'a> GetEaseFactors<'a> {
+    pub fn new(cards: &'a [u64]) -> Self {
+        Self {
+            cards,
+        }
+    }
+}
+
+impl<'a> Request for GetEaseFactors<'a> {
+    type Params = Self;
+    type Response = Vec<u64>;
+    fn get_action(&self) -> &'static str { "getEaseFactors" }
+    fn get_params(&self) -> Option<&Self::Params> { Some(self) }
+}
+
+impl<'a> Default for GetEaseFactors<'a> {
+    fn default() -> Self {
+        GetEaseFactors::new(&[])
+    }
+}
+
 // TODO setEaseFactors
 // TODO setSpecificValueOfCard
 // TODO suspend
@@ -35,17 +61,23 @@ impl<'a> Request for FindCards<'a> {
     fn get_params(&self) -> Option<&Self::Params> { Some(self) }
 }
 
+impl<'a> Default for FindCards<'a> {
+    fn default() -> Self {
+        FindCards::new("")
+    }
+}
+
 /// Invokes the `cardsToNotes` action.
 /// Returns all note IDs corresponding to the given card IDs.
 /// The order of elements in the output array is unspecified.
 #[derive(serde::Serialize)]
 pub struct CardsToNotes<'a> {
-    cards: &'a Vec<u64>,
+    cards: &'a [u64],
 }
 
 impl<'a> CardsToNotes<'a> {
-    pub fn new(cards: &'a Vec<u64>) -> CardsToNotes<'a> {
-        CardsToNotes {
+    pub fn new(cards: &'a [u64]) -> Self {
+        Self {
             cards,
         }
     }

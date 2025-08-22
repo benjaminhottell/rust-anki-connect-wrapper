@@ -27,6 +27,34 @@ if let Err(e) = anki.invoke(&browse_request).await {
 };
 ```
 
+## Testing
+
+### Unit testing
+
+Unit tests can be executed without an Anki instance running. These test internal components only, and do not make any connections to Anki or Anki-Connect.
+
+```rust
+cargo test --lib
+```
+
+You can also run the doctests without an Anki instance running.
+
+```rust
+cargo test --doc
+```
+
+### Integration testing
+
+Integration tests require an Anki instance with the Anki-Connect plugin installed, available at the default port on localhost.
+
+The `stateless` tests will run a series of non-modifying API requests (e.g. `version`). These should not modify the state of the Anki instance, and should therefore be 'safe' to run.
+
+```rust
+cargo test --tests stateless
+```
+
+In the future modifying tests could be added so it is best to specify `stateless` explicitly.
+
 ## Help wanted
 
 Only a small subset of all of the API endpoints have been implemented. Pull requests to add support for more endpoints are welcome.

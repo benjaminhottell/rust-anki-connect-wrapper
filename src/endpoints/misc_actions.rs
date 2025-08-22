@@ -6,6 +6,7 @@ use crate::endpoints::request::Request;
 
 /// Corresponds to the `version` action.
 /// Returns a number indicating the version of the API server.
+#[derive(Default)]
 pub struct Version;
 
 impl Request for Version {
@@ -18,6 +19,7 @@ impl Request for Version {
 
 /// Corresponds to the `sync` action.
 /// Prompts the running Anki instance to sync with AnkiWeb.
+#[derive(Default)]
 pub struct Sync;
 
 impl Request for Sync {
@@ -28,6 +30,7 @@ impl Request for Sync {
 
 /// Corresponds to the `getProfiles` action.
 /// Returns a Vec of strings indicaating the names of profiles in the client.
+#[derive(Default)]
 pub struct GetProfiles;
 
 impl Request for GetProfiles {
