@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::models::CardReview;
 use crate::endpoints::request::Request;
 
@@ -21,13 +22,13 @@ impl Request for GetNumCardsReviewedToday {
 #[derive(serde::Serialize)]
 pub struct GetReviewsOfCards<'a> {
     /// Card IDs
-    cards: &'a [u64],
+    cards: Cow<'a, [u64]>,
 }
 
 impl<'a> GetReviewsOfCards<'a> {
-    pub fn new(cards: &'a [u64]) -> GetReviewsOfCards<'a> {
+    pub fn new(cards: impl Into<Cow<'a, [u64]>>) -> GetReviewsOfCards<'a> {
         GetReviewsOfCards {
-            cards,
+            cards: cards.into(),
         }
     }
 }

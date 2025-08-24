@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::endpoints::request::Request;
 
 // Card actions
@@ -43,13 +44,13 @@ impl<'a> Default for GetEaseFactors<'a> {
 /// See: <https://docs.ankiweb.net/searching.html>
 #[derive(serde::Serialize)]
 pub struct FindCards<'a> {
-    query: &'a str,
+    query: Cow<'a, str>,
 }
 
 impl<'a> FindCards<'a> {
-    pub fn new(query: &'a str) -> FindCards<'a> {
+    pub fn new(query: impl Into<Cow<'a, str>>) -> FindCards<'a> {
         FindCards {
-            query,
+            query: query.into(),
         }
     }
 }
@@ -72,13 +73,13 @@ impl<'a> Default for FindCards<'a> {
 /// The order of elements in the output array is unspecified.
 #[derive(serde::Serialize)]
 pub struct CardsToNotes<'a> {
-    cards: &'a [u64],
+    cards: Cow<'a, [u64]>,
 }
 
 impl<'a> CardsToNotes<'a> {
-    pub fn new(cards: &'a [u64]) -> Self {
+    pub fn new(cards: impl Into<Cow<'a, [u64]>>) -> Self {
         Self {
-            cards,
+            cards: cards.into(),
         }
     }
 }

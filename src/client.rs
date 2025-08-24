@@ -49,7 +49,7 @@ impl<'a> ClientBuilder<'a> {
 
     pub fn build(self) -> Client<'a> {
         Client {
-            url: self.url.unwrap_or_else(|| Client::DEFAULT_URL),
+            url: self.url.unwrap_or(Client::DEFAULT_URL),
             client: self.client.unwrap_or_default(),
         }
     }

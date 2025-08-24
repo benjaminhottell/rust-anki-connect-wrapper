@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::endpoints::request::Request;
 
 // Note actions
@@ -17,15 +18,18 @@ use crate::endpoints::request::Request;
 /// `tags` should be the tags to add, separated by space.
 #[derive(serde::Serialize)]
 pub struct AddTags<'a> {
-    notes: &'a [u64],
-    tags: &'a str,
+    notes: Cow<'a, [u64]>,
+    tags: Cow<'a, str>,
 }
 
 impl<'a> AddTags<'a> {
-    pub fn new(notes: &'a [u64], tags: &'a str) -> Self {
+    pub fn new(
+        notes: impl Into<Cow<'a, [u64]>>,
+        tags: impl Into<Cow<'a, str>>,
+    ) -> Self {
         Self {
-            notes,
-            tags,
+            notes: notes.into(),
+            tags: tags.into(),
         }
     }
 }
@@ -42,8 +46,8 @@ impl<'a> Request for AddTags<'a> {
 /// `tags` should be the tags to add, separated by space.
 #[derive(serde::Serialize)]
 pub struct RemoveTags<'a> {
-    notes: &'a [u64],
-    tags: &'a str,
+    notes: Cow<'a, [u64]>,
+    tags: Cow<'a, str>,
 }
 
 impl<'a> Request for RemoveTags<'a> {
@@ -63,7 +67,7 @@ impl<'a> Request for RemoveTags<'a> {
 /// See: <https://docs.ankiweb.net/searching.html>
 #[derive(serde::Serialize)]
 pub struct FindNotes<'a> {
-    query: &'a str,
+    query: Cow<'a, str>,
 }
 
 impl<'a> Request for FindNotes<'a> {

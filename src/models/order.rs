@@ -21,14 +21,14 @@ mod tests {
     #[test]
     fn serialize_ascending() {
         let value = Order::Ascending;
-        let body = serde_json::to_value(&value).unwrap();
+        let body = serde_json::to_value(value).unwrap();
         assert_eq!(body, serde_json::Value::String("ascending".to_string()));
     }
 
     #[test]
     fn serialize_descending() {
         let value = Order::Descending;
-        let body = serde_json::to_value(&value).unwrap();
+        let body = serde_json::to_value(value).unwrap();
         assert_eq!(body, serde_json::Value::String("descending".to_string()));
     }
 

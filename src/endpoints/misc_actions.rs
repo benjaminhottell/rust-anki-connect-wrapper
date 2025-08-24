@@ -39,6 +39,7 @@ impl Request for GetProfiles {
     fn get_action(&self) -> &'static str { "getProfiles" }
 }
 
+#[derive(Default)]
 pub struct GetActiveProfile;
 
 impl Request for GetActiveProfile {

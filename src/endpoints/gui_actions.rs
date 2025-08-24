@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::endpoints::request::Request;
 use crate::models::{Order, BrowserColumn};
 
@@ -37,7 +39,7 @@ pub struct GuiBrowseOptions<'a> {
     #[serde(
         skip_serializing_if = "Option::is_none"
     )]
-    pub query: Option<&'a str>,
+    pub query: Option<Cow<'a, str>>,
 
     #[serde(
         rename = "reorderCards",
@@ -56,7 +58,7 @@ impl<'a> GuiBrowseOptions<'a> {
     }
 
     /// Create an options object with just a query and without any sort preferences
-    pub fn query(query: impl Into<&'a str>) -> Self {
+    pub fn query(query: impl Into<Cow<'a, str>>) -> Self {
         Self {
             query: Some(query.into()),
             reorder_cards: None,
@@ -72,7 +74,7 @@ impl<'a> Default for GuiBrowseOptions<'a> {
 
 impl<'a> GuiBrowseOptions<'a> {
 
-    pub fn with_query(mut self, query: &'a str) -> Self {
+    pub fn with_query(mut self, query: Cow<'a, str>) -> Self {
         self.query = Some(query);
         self
     }
@@ -116,7 +118,7 @@ impl<'a> Request for GuiBrowse<'a> {
 pub struct GuiBrowseBuilder<'a> {
     order: Option<Order>,
     column: Option<BrowserColumn>,
-    query: Option<&'a str>,
+    query: Option<Cow<'a, str>>,
 }
 
 impl<'a> GuiBrowseBuilder<'a> {
@@ -147,27 +149,31 @@ impl<'a> GuiBrowseBuilder<'a> {
         self
     }
 
-    pub fn query(mut self, query: &'a str) -> Self {
-        self.query = Some(query);
+    pub fn query(mut self, query: impl Into<Cow<'a, str>>) -> Self {
+        self.query = Some(query.into());
         self
     }
 
-    fn build_reorder_cards(self) -> Option<GuiBrowseCardOrderOptions> {
-        if self.order.is_none() && self.column.is_none() {
-            return None
-        }
-        Some(GuiBrowseCardOrderOptions {
-            order: self.order,
-            column: self.column,
-        })
-    }
-
     fn build_options(self) -> Option<GuiBrowseOptions<'a>> {
+        let order = self.order;
+        let column = self.column;
         let query = self.query;
-        let reorder_cards = self.build_reorder_cards();
+
+        let reorder_cards = {
+            if order.is_none() && column.is_none() {
+                None
+            } else {
+                Some(GuiBrowseCardOrderOptions {
+                    order,
+                    column,
+                })
+            }
+        };
+
         if query.is_none() && reorder_cards.is_none() {
             return None;
         }
+
         Some(GuiBrowseOptions {
             query,
             reorder_cards,
@@ -226,7 +232,7 @@ impl Request for GuiUndo {
 #[derive(serde::Serialize)]
 pub struct GuiDeckOverview<'a> {
     /// Name of deck
-    name: &'a str,
+    name: Cow<'a, str>,
 }
 
 impl<'a> Request for GuiDeckOverview<'a> {
@@ -251,7 +257,7 @@ impl Request for GuiDeckBrowser {
 #[derive(serde::Serialize)]
 pub struct GuiDeckReview<'a> {
     /// Name of deck
-    name: &'a str,
+    name: Cow<'a, str>,
 }
 
 impl<'a> Request for GuiDeckReview<'a> {
@@ -265,7 +271,7 @@ impl<'a> Request for GuiDeckReview<'a> {
 /// Opens the Import... dialog.
 #[derive(serde::Serialize)]
 pub struct GuiImportFile<'a> {
-    path: Option<&'a str>,
+    path: Option<Cow<'a, str>>,
 }
 
 impl<'a> Request for GuiImportFile<'a> {

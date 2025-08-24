@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn serialize_note_creation() {
         let value = BrowserColumn::NoteCreation;
-        let body = serde_json::to_value(&value).unwrap();
+        let body = serde_json::to_value(value).unwrap();
         assert_eq!(body, serde_json::Value::String("noteCrt".to_string()));
     }
 
