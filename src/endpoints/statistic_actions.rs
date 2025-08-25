@@ -4,12 +4,9 @@ use crate::endpoints::request::Request;
 
 // Statistic actions
 
-// TODO getNumCardsReviewedByDay
-// TODO getCollectionStatsHTML
-// TODO cardReviews
-
 /// Corresponds to the `getNumCardsReviewedToday` action.
-pub struct GetNumCardsReviewedToday {}
+#[derive(Default)]
+pub struct GetNumCardsReviewedToday;
 
 impl Request for GetNumCardsReviewedToday {
     type Response = u64;
@@ -17,6 +14,20 @@ impl Request for GetNumCardsReviewedToday {
     fn get_action(&self) -> &'static str { "getNumCardsReviewedToday" }
     fn get_params(&self) -> Option<&Self::Params> { None }
 }
+
+/// Corresponds to the `getNumCardsReviewedByDay` action
+#[derive(Default)]
+pub struct GetNumCardsReviewedByDay;
+
+impl Request for GetNumCardsReviewedByDay {
+    type Response = Vec<(String, u64)>;
+    type Params = ();
+    fn get_action(&self) -> &'static str { "getNumCardsReviewedByDay" }
+    fn get_params(&self) -> Option<&Self::Params> { None }
+}
+
+// TODO getCollectionStatsHTML
+// TODO cardReviews
 
 /// Corresponds to the `getReviewsOfCards` action.
 #[derive(serde::Serialize)]
