@@ -10,7 +10,7 @@ mod note_actions;
 mod statistic_actions;
 
 pub use card_actions::*;
-// pub use deck_actions::*;
+pub use deck_actions::*;
 pub use gui_actions::*;
 pub use media_actions::*;
 pub use misc_actions::*;

@@ -15,3 +15,6 @@ pub use card_review::CardReview;
 
 pub mod media_source;
 pub use media_source::MediaSource;
+
+pub mod deck_stats;
+pub use deck_stats::DeckStats;
