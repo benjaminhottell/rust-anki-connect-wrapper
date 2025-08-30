@@ -96,4 +96,29 @@ impl<'a> Request for CardsToNotes<'a> {
 // TODO forgetCards
 // TODO relearnCards
 // TODO answerCards
-// TODO setDueDate
+
+/// Corresponds to the `setDueDate` action
+#[derive(serde::Serialize)]
+pub struct SetDueDate<'a> {
+    cards: Cow<'a, [u64]>,
+    days: Cow<'a, str>,
+}
+
+impl<'a> SetDueDate<'a> {
+    pub fn new(
+        cards: impl Into<Cow<'a, [u64]>>,
+        days: impl Into<Cow<'a, str>>,
+    ) -> Self {
+        SetDueDate {
+            cards: cards.into(),
+            days: days.into(),
+        }
+    }
+}
+
+impl<'a> Request for SetDueDate<'a> {
+    type Params = Self;
+    type Response = ();
+    fn get_action(&self) -> &'static str { "setDueDate" }
+    fn get_params(&self) -> Option<&Self::Params> { Some(self) }
+}
