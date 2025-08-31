@@ -1,5 +1,7 @@
+pub mod are_due;
 pub mod card_reviews;
 pub mod find_cards;
+pub mod get_collection_stats_html;
 pub mod get_deck_stats;
 pub mod get_ease_factors;
 pub mod get_latest_review_id;
@@ -9,4 +11,3 @@ pub mod get_num_cards_reviewed_by_day;
 pub mod get_reviews_of_cards;
 pub mod model_styling;
 pub mod version;
-pub mod get_collection_stats_html;

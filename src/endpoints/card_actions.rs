@@ -36,7 +36,34 @@ impl<'a> Default for GetEaseFactors<'a> {
 // TODO unsuspend
 // TODO suspended
 // TODO areSuspended
-// TODO areDue
+
+/// Corresponds to the `areDue` action.
+#[derive(serde::Serialize)]
+pub struct AreDue<'a> {
+    cards: Cow<'a, [u64]>,
+}
+
+impl<'a> AreDue<'a> {
+    pub fn new(cards: impl Into<Cow<'a, [u64]>>) -> Self {
+        Self {
+            cards: cards.into(),
+        }
+    }
+}
+
+impl<'a> Default for AreDue<'a> {
+    fn default() -> Self {
+        Self::new(&[])
+    }
+}
+
+impl<'a> Request for AreDue<'a> {
+    type Params = Self;
+    type Response = Vec<bool>;
+    fn get_action(&self) -> &'static str { "areDue" }
+    fn get_params(&self) -> Option<&Self::Params> { Some(self) }
+}
+
 // TODO getIntervals
 
 /// Corresponds to the `findCards` action.
